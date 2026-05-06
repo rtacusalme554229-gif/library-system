@@ -53,38 +53,48 @@ class AuthController:
             return
 
         try:
-            print("LOGIN CLICKED")
             user = UserModel.find_by_email_and_password(email, password)
-            print("USER:", user)
         except Exception as e:
             print("LOGIN ERROR:", e)
             self.login_view.show_error("Database Error", "Unable to connect to the database.")
             return
 
         if not user:
-            self.login_view.show_error("Login Failed", "Invalid email or password, or database unavailable.")
+            self.login_view.show_error("Login Failed", "Invalid email or password.")
+            return
+
+        if user.get("status", "Active") != "Active":
+            self.login_view.show_error(
+                "Access Denied",
+                "This account is inactive. Please contact the administrator or librarian."
+            )
             return
 
         self.current_user = user
         self.login_view.hide()
 
-        if user["role"] == "admin":
-            self.admin_dashboard = AdminDashboardView(self.admin_controller)
-            self.admin_controller.set_dashboard(self.admin_dashboard)
-            self.admin_dashboard.show()
+        try:
+            if user["role"] == "admin":
+                self.admin_dashboard = AdminDashboardView(self.admin_controller)
+                self.admin_controller.set_dashboard(self.admin_dashboard)
+                self.admin_dashboard.show()
 
-        elif user["role"] == "librarian":
-            self.librarian_dashboard = LibrarianDashboardView(self.librarian_controller)
-            self.librarian_controller.set_dashboard(self.librarian_dashboard)
-            self.book_controller.set_librarian_dashboard(self.librarian_dashboard)
-            self.borrow_controller.set_librarian_dashboard(self.librarian_dashboard)
-            self.librarian_dashboard.show()
+            elif user["role"] == "librarian":
+                self.librarian_dashboard = LibrarianDashboardView(self.librarian_controller)
+                self.librarian_controller.set_dashboard(self.librarian_dashboard)
+                self.book_controller.set_librarian_dashboard(self.librarian_dashboard)
+                self.borrow_controller.set_librarian_dashboard(self.librarian_dashboard)
+                self.librarian_dashboard.show()
 
-        elif user["role"] == "student":
-            self.student_dashboard = StudentDashboardView(self.student_controller)
-            self.student_controller.set_dashboard(self.student_dashboard)
-            self.book_controller.set_student_dashboard(self.student_dashboard)
-            self.student_dashboard.show()
+            elif user["role"] == "student":
+                self.student_dashboard = StudentDashboardView(self.student_controller)
+                self.student_controller.set_dashboard(self.student_dashboard)
+                self.book_controller.set_student_dashboard(self.student_dashboard)
+                self.student_dashboard.show()
+
+        except Exception as e:
+            print("CRASH DURING DASHBOARD LOAD:", e)
+            self.login_view.show_error("Error", f"Failed to open dashboard:\n{e}")
 
     def logout(self):
         if self.admin_dashboard:
